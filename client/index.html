@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF Merger — Merge PDFs Instantly via API</title>
+<meta name="description" content="Merge multiple PDF files into one.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%237c3aed'/%3E%3Ctext x='16' y='22' text-anchor='middle' fill='white' font-size='16' font-weight='bold' font-family='sans-serif'%3EP%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="layout">
+<!-- LEFT SIDEBAR -->
+<aside class="sidebar">
+<div class="sidebar-header">
+<h1>PDF Merger</h1>
+<div class="sub">Merge PDFs via secure backend API</div>
+</div>
+<div class="sidebar-body">
+<div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload PDF files">
+<div class="dz-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+<h3>Drop PDFs here</h3>
+<p>or <span class="browse-link">browse</span> &middot; up to 50 MB each</p>
+<input type="file" id="fileInput" accept=".pdf,application/pdf" multiple>
+</div>
+<div id="fileSection" style="display:none">
+<div class="file-header"><h2>Files</h2><div class="file-header-r"><span class="file-count" id="fileCount">0</span><button class="clear-btn" id="clearBtn">Clear All</button></div></div>
+<div class="file-list" id="fileList"></div>
+<div class="file-summary" id="fileSummary"></div>
+</div>
+</div>
+<div class="sidebar-footer">
+<button class="merge-btn" id="mergeBtn" disabled><span class="shimmer"></span><span id="mergeBtnText">Merge PDFs</span></button>
+<button class="dl-btn" id="dlBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Merged PDF</button>
+<div class="progress-wrap" id="progressWrap"><div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div><div class="progress-text" id="progressText"></div></div>
+</div>
+</aside>
+<!-- RIGHT VIEWER -->
+<main class="viewer">
+<div class="viewer-empty" id="viewerEmpty">
+<svg class="viewer-empty-icon" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="25" y="10" width="70" height="90" rx="6" stroke-dasharray="4 3" style="animation:pulse 3s ease-in-out infinite"/><path d="M45 40h30M45 52h30M45 64h20" opacity=".4"/><circle cx="85" cy="85" r="20" fill="#7c3aed" opacity=".12"/><polyline points="78 85 85 92 95 78" stroke="#7c3aed" stroke-width="2.5"/></svg>
+<h3>Your merged PDF will appear here</h3>
+<p>Upload files on the left, then hit Merge to preview the result right here.</p>
+</div>
+<div id="viewerDiv"></div>
+</main>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+<script type="module" src="/main.js"></script>
+</body>
+</html>
