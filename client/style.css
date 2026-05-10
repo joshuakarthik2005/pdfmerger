@@ -28,6 +28,10 @@ button{font-family:var(--font-b);cursor:pointer;border:none;outline:none}
 .sidebar-header{padding:20px 18px 0;text-align:center;flex-shrink:0}
 .sidebar-header h1{font-size:1.3rem;background:linear-gradient(135deg,var(--text),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .sidebar-header .sub{color:var(--text3);font-size:.72rem;margin-top:4px}
+.mode-switcher{display:flex;background:var(--surface);border-radius:var(--radius);padding:4px;margin-top:14px}
+.mode-btn{flex:1;padding:8px 0;border-radius:calc(var(--radius) - 2px);font-size:.8rem;font-weight:600;color:var(--text2);background:transparent;transition:all .2s;text-align:center}
+.mode-btn:hover:not(.active){color:var(--text)}
+.mode-btn.active{background:var(--accent);color:white;box-shadow:0 2px 8px var(--accent-glow)}
 .privacy-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.18);color:var(--green);padding:4px 12px;border-radius:99px;font-size:.68rem;font-weight:500;margin-top:10px}
 .privacy-badge svg{width:12px;height:12px;flex-shrink:0}
 

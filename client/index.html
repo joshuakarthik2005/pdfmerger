@@ -15,10 +15,15 @@
 <!-- LEFT SIDEBAR -->
 <aside class="sidebar">
 <div class="sidebar-header">
-<h1>PDF Merger</h1>
-<div class="sub">Merge PDFs via secure backend API</div>
+<h1>PDF Tools</h1>
+<div class="mode-switcher">
+  <button class="mode-btn active" id="modeMergeBtn">Merge</button>
+  <button class="mode-btn" id="modeSignBtn">Sign</button>
+</div>
+<div class="sub" id="modeSub">Merge PDFs via secure backend API</div>
 </div>
 <div class="sidebar-body">
+<div id="mergeMode">
 <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Upload PDF files">
 <div class="dz-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
 <h3>Drop PDFs here</h3>
@@ -31,9 +36,64 @@
 <div class="file-summary" id="fileSummary"></div>
 </div>
 </div>
+<div id="signMode" style="display:none">
+  <div class="dropzone" id="signPdfDropzone" tabindex="0" role="button">
+    <div class="dz-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg></div>
+    <h3>Drop target PDF here</h3>
+    <p>or <span class="browse-link">browse</span></p>
+    <input type="file" id="signPdfInput" accept=".pdf,application/pdf">
+  </div>
+  <div id="signPdfInfo" style="display:none; margin: 10px 0; padding: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);">
+    <div style="font-size: 0.8rem; font-weight: 500;" id="signPdfName"></div>
+    <button class="clear-btn" id="clearSignPdfBtn" style="margin-top: 5px;">Change File</button>
+  </div>
+
+  <div class="sign-options" style="margin-top: 20px;">
+    <h3 style="font-size: 0.9rem; margin-bottom: 10px;">Signature Source</h3>
+    <div class="mode-switcher" style="margin-bottom: 15px;">
+      <button class="mode-btn active" id="sigDrawBtn">Draw</button>
+      <button class="mode-btn" id="sigUploadBtn">Upload Image</button>
+    </div>
+    
+    <div id="sigDrawArea">
+      <canvas id="sigCanvas" width="300" height="150" style="background: white; border-radius: var(--radius); width: 100%; border: 1px solid var(--border); cursor: crosshair;"></canvas>
+      <button class="clear-btn" id="clearSigBtn" style="margin-top: 5px;">Clear Signature</button>
+    </div>
+
+    <div id="sigUploadArea" style="display:none">
+      <div class="dropzone" id="sigImgDropzone" tabindex="0" role="button">
+        <h3>Drop Signature Image</h3>
+        <p>or <span class="browse-link">browse</span> (PNG/JPG)</p>
+        <input type="file" id="sigImgInput" accept="image/png, image/jpeg">
+      </div>
+      <div id="sigImgInfo" style="display:none; margin-top: 5px; font-size: 0.8rem; color: var(--text3);"></div>
+    </div>
+
+    <h3 style="font-size: 0.9rem; margin-top: 20px; margin-bottom: 10px;">Positioning</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">Page #</label>
+        <input type="number" id="signPage" value="1" min="1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+      </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">Width (%)</label>
+        <input type="number" id="signWidth" value="20" min="1" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+      </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">X Pos (%)</label>
+        <input type="number" id="signX" value="60" min="0" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+      </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">Y Pos (%)</label>
+        <input type="number" id="signY" value="85" min="0" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+      </div>
+    </div>
+  </div>
+</div>
+</div>
 <div class="sidebar-footer">
-<button class="merge-btn" id="mergeBtn" disabled><span class="shimmer"></span><span id="mergeBtnText">Merge PDFs</span></button>
-<button class="dl-btn" id="dlBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Merged PDF</button>
+<button class="merge-btn" id="actionBtn" disabled><span class="shimmer"></span><span id="actionBtnText">Merge PDFs</span></button>
+<button class="dl-btn" id="dlBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Result</button>
 <div class="progress-wrap" id="progressWrap"><div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div><div class="progress-text" id="progressText"></div></div>
 </div>
 </aside>

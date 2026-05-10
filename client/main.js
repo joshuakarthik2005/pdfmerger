@@ -6,7 +6,7 @@ let merging = false, mergedBlob = null, mergedBlobUrl = null;
 
 const dropzone = $('#dropzone'), fileInput = $('#fileInput'), fileList = $('#fileList'),
       fileSection = $('#fileSection'), fileCount = $('#fileCount'), fileSummary = $('#fileSummary'),
-      mergeBtn = $('#mergeBtn'), mergeBtnText = $('#mergeBtnText'), dlBtn = $('#dlBtn'),
+      actionBtn = $('#actionBtn'), actionBtnText = $('#actionBtnText'), dlBtn = $('#dlBtn'),
       progressWrap = $('#progressWrap'), progressBar = $('#progressBar'), progressText = $('#progressText'),
       clearBtn = $('#clearBtn'), viewerEmpty = $('#viewerEmpty'), viewerDiv = $('#viewerDiv'),
       toastContainer = $('#toastContainer');
@@ -15,6 +15,13 @@ const DB_NAME = 'pdfMergerDB', DB_STORE = 'files', DB_VER = 1;
 
 // Get the API URL from Vite's env variables (fallback to localhost for development if undefined)
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const PYTHON_API_URL = import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:5001/api';
+
+// ===== State =====
+let currentMode = 'merge'; // 'merge' | 'sign'
+let signTargetPdf = null;
+let sigMode = 'draw'; // 'draw' | 'upload'
+let sigImageFile = null;
 
 // ===== IndexedDB =====
 function openDB() {
@@ -103,13 +110,20 @@ function toast(msg, type = 'error') {
 }
 
 function updateUI() {
-  const n = files.length;
-  fileSection.style.display = n ? 'block' : 'none';
-  const ts = files.reduce((s, f) => s + f.size, 0);
-  fileCount.textContent = n + ' file' + (n !== 1 ? 's' : '');
-  fileSummary.textContent = n ? n + ' file' + (n !== 1 ? 's' : '') + ' · ' + fmtSize(ts) : '';
-  mergeBtn.disabled = n < 2 || merging;
-  if (!merging) mergeBtnText.textContent = n < 2 ? 'Add at least 2 PDFs' : 'Merge ' + n + ' PDFs';
+  if (currentMode === 'merge') {
+    const n = files.length;
+    fileSection.style.display = n ? 'block' : 'none';
+    const ts = files.reduce((s, f) => s + f.size, 0);
+    fileCount.textContent = n + ' file' + (n !== 1 ? 's' : '');
+    fileSummary.textContent = n ? n + ' file' + (n !== 1 ? 's' : '') + ' · ' + fmtSize(ts) : '';
+    actionBtn.disabled = n < 2 || merging;
+    if (!merging) actionBtnText.textContent = n < 2 ? 'Add at least 2 PDFs' : 'Merge ' + n + ' PDFs';
+  } else {
+    fileSection.style.display = 'none';
+    const isReady = signTargetPdf && (sigMode === 'draw' ? isCanvasDrawn() : sigImageFile);
+    actionBtn.disabled = !isReady || merging;
+    if (!merging) actionBtnText.textContent = 'Sign PDF';
+  }
 }
 
 function renderList() {
@@ -249,6 +263,103 @@ function removeFile(idx) {
 fileList.addEventListener('click', e => { const btn = e.target.closest('.file-remove'); if (btn) removeFile(+btn.dataset.idx); });
 clearBtn.addEventListener('click', () => { if (!files.length) return; files.length = 0; renderList(); clearSession(); toast('All files cleared.', 'warn'); });
 
+// ===== Mode Switcher =====
+$('#modeMergeBtn').onclick = () => setMode('merge');
+$('#modeSignBtn').onclick = () => setMode('sign');
+
+function setMode(m) {
+  currentMode = m;
+  if (m === 'merge') {
+    $('#modeMergeBtn').classList.add('active');
+    $('#modeSignBtn').classList.remove('active');
+    $('#mergeMode').style.display = 'block';
+    $('#signMode').style.display = 'none';
+    $('#modeSub').textContent = 'Merge PDFs via secure backend API';
+  } else {
+    $('#modeSignBtn').classList.add('active');
+    $('#modeMergeBtn').classList.remove('active');
+    $('#signMode').style.display = 'block';
+    $('#mergeMode').style.display = 'none';
+    $('#modeSub').textContent = 'Digitally sign a single PDF';
+  }
+  updateUI();
+}
+
+// ===== Sign Mode Logic =====
+$('#signPdfDropzone').onclick = () => $('#signPdfInput').click();
+$('#signPdfInput').onchange = e => handleSignPdfDrop(e.target.files[0]);
+
+$('#signPdfDropzone').ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; $('#signPdfDropzone').classList.add('drag-over'); };
+$('#signPdfDropzone').ondragleave = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); };
+$('#signPdfDropzone').ondrop = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleSignPdfDrop(e.dataTransfer.files[0]); };
+
+function handleSignPdfDrop(file) {
+  if (!file) return;
+  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) return toast('Target must be a PDF.');
+  signTargetPdf = file;
+  $('#signPdfDropzone').style.display = 'none';
+  $('#signPdfInfo').style.display = 'block';
+  $('#signPdfName').textContent = file.name + ' (' + fmtSize(file.size) + ')';
+  updateUI();
+}
+$('#clearSignPdfBtn').onclick = () => { signTargetPdf = null; $('#signPdfDropzone').style.display = 'block'; $('#signPdfInfo').style.display = 'none'; $('#signPdfInput').value = ''; updateUI(); };
+
+// Signature mode switcher
+$('#sigDrawBtn').onclick = () => setSigMode('draw');
+$('#sigUploadBtn').onclick = () => setSigMode('upload');
+function setSigMode(m) {
+  sigMode = m;
+  if (m === 'draw') {
+    $('#sigDrawBtn').classList.add('active'); $('#sigUploadBtn').classList.remove('active');
+    $('#sigDrawArea').style.display = 'block'; $('#sigUploadArea').style.display = 'none';
+  } else {
+    $('#sigUploadBtn').classList.add('active'); $('#sigDrawBtn').classList.remove('active');
+    $('#sigUploadArea').style.display = 'block'; $('#sigDrawArea').style.display = 'none';
+  }
+  updateUI();
+}
+
+// Signature Canvas
+const sigCanvas = $('#sigCanvas');
+const ctx = sigCanvas.getContext('2d');
+let drawing = false;
+let hasDrawn = false;
+ctx.lineWidth = 3;
+ctx.lineCap = 'round';
+ctx.strokeStyle = '#000';
+
+function getPos(e) {
+  const rect = sigCanvas.getBoundingClientRect();
+  const cX = e.clientX || (e.touches && e.touches[0].clientX);
+  const cY = e.clientY || (e.touches && e.touches[0].clientY);
+  const scaleX = sigCanvas.width / rect.width;
+  const scaleY = sigCanvas.height / rect.height;
+  return { x: (cX - rect.left) * scaleX, y: (cY - rect.top) * scaleY };
+}
+sigCanvas.onmousedown = sigCanvas.ontouchstart = e => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+sigCanvas.onmousemove = sigCanvas.ontouchmove = e => { if (!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasDrawn = true; updateUI(); };
+window.addEventListener('mouseup', () => drawing = false);
+window.addEventListener('touchend', () => drawing = false);
+
+$('#clearSigBtn').onclick = () => { ctx.clearRect(0,0,sigCanvas.width,sigCanvas.height); hasDrawn = false; updateUI(); };
+function isCanvasDrawn() { return hasDrawn; }
+
+// Signature Upload
+$('#sigImgDropzone').onclick = () => $('#sigImgInput').click();
+$('#sigImgInput').onchange = e => handleSigImgDrop(e.target.files[0]);
+$('#sigImgDropzone').ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; $('#sigImgDropzone').classList.add('drag-over'); };
+$('#sigImgDropzone').ondragleave = e => { e.preventDefault(); $('#sigImgDropzone').classList.remove('drag-over'); };
+$('#sigImgDropzone').ondrop = e => { e.preventDefault(); $('#sigImgDropzone').classList.remove('drag-over'); if(e.dataTransfer.files[0]) handleSigImgDrop(e.dataTransfer.files[0]); };
+
+function handleSigImgDrop(file) {
+  if (!file) return;
+  if (!file.type.startsWith('image/')) return toast('Signature must be an image.');
+  sigImageFile = file;
+  $('#sigImgInfo').style.display = 'block';
+  $('#sigImgInfo').innerHTML = 'Selected: <strong>' + file.name + '</strong>';
+  updateUI();
+}
+
 // ===== PDF Viewer (native browser) =====
 function showInViewer(blobUrl) {
   viewerDiv.innerHTML = '<object data="' + blobUrl + '" type="application/pdf"><iframe src="' + blobUrl + '"></iframe></object>';
@@ -296,21 +407,44 @@ function showSummary(n, sz) {
   ov.onclick = e => { if (e.target === ov) ov.remove(); };
 }
 
-// ===== Merge API Call =====
-mergeBtn.addEventListener('click', async () => {
-  if (files.length < 2 || merging) return;
+// ===== API Call (Merge / Sign) =====
+actionBtn.addEventListener('click', async () => {
+  if (currentMode === 'merge' && files.length < 2) return;
+  if (currentMode === 'sign' && !signTargetPdf) return;
+  if (merging) return;
 
   merging = true;
-  mergeBtn.disabled = true;
-  mergeBtnText.innerHTML = '<span class="spinner"></span>Preparing upload...';
+  actionBtn.disabled = true;
+  actionBtnText.innerHTML = '<span class="spinner"></span>Preparing upload...';
   progressWrap.classList.add('active');
   progressBar.style.width = '0%';
   progressText.textContent = 'Starting...';
 
   try {
     const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i].file, files[i].name);
+    let endpoint = '';
+
+    if (currentMode === 'merge') {
+      for (let i = 0; i < files.length; i++) {
+        formData.append('files', files[i].file, files[i].name);
+      }
+      endpoint = `${API_URL}/merge`;
+    } else {
+      // Sign mode
+      formData.append('pdf', signTargetPdf);
+      formData.append('signature_mode', sigMode);
+      formData.append('page', $('#signPage').value);
+      formData.append('width', $('#signWidth').value);
+      formData.append('x', $('#signX').value);
+      formData.append('y', $('#signY').value);
+
+      if (sigMode === 'draw') {
+        const dataUrl = sigCanvas.toDataURL('image/png');
+        formData.append('signature_data', dataUrl);
+      } else {
+        formData.append('signature_file', sigImageFile);
+      }
+      endpoint = `${PYTHON_API_URL}/sign-pdf`;
     }
 
     // Use XMLHttpRequest for upload progress tracking
@@ -319,11 +453,10 @@ mergeBtn.addEventListener('click', async () => {
     const promise = new Promise((resolve, reject) => {
       xhr.upload.addEventListener("progress", (event) => {
         if (event.lengthComputable) {
-          // Upload takes 0-80% of the progress bar visually
           const pct = Math.round((event.loaded / event.total) * 80);
           progressBar.style.width = pct + '%';
           progressText.textContent = 'Uploading... ' + pct + '%';
-          mergeBtnText.innerHTML = '<span class="spinner"></span>Uploading ' + pct + '%';
+          actionBtnText.innerHTML = '<span class="spinner"></span>Uploading ' + pct + '%';
         }
       });
 
@@ -343,20 +476,19 @@ mergeBtn.addEventListener('click', async () => {
       xhr.addEventListener("error", () => reject(new Error("Network error occurred")));
       xhr.addEventListener("abort", () => reject(new Error("Upload aborted")));
       
-      xhr.open("POST", `${API_URL}/merge`);
+      xhr.open("POST", endpoint);
       xhr.responseType = "blob";
       xhr.send(formData);
       
-      // Wait for server processing (80-100% of progress bar)
       progressBar.style.width = '90%';
       progressText.textContent = 'Processing...';
-      mergeBtnText.innerHTML = '<span class="spinner"></span>Processing';
+      actionBtnText.innerHTML = '<span class="spinner"></span>Processing';
     });
 
     const outBlob = await promise;
     
     progressBar.style.width = '100%';
-    mergeBtnText.innerHTML = '✓ Done!';
+    actionBtnText.innerHTML = '✓ Done!';
 
     if (mergedBlobUrl) URL.revokeObjectURL(mergedBlobUrl);
     
@@ -366,12 +498,19 @@ mergeBtn.addEventListener('click', async () => {
     dlBtn.style.display = 'flex';
     showInViewer(mergedBlobUrl);
     
-    toast('Merge complete!', 'success');
-    showSummary(files.length, outBlob.size);
+    const title = currentMode === 'merge' ? 'Merge complete!' : 'Signing complete!';
+    toast(title, 'success');
+    
+    if (currentMode === 'merge') {
+      showSummary(files.length, outBlob.size);
+    } else {
+      showSummary(1, outBlob.size);
+      $('#signPage').value = 1; // reset page just in case
+    }
 
   } catch (e) {
     console.error(e);
-    toast('Merge failed: ' + e.message);
+    toast((currentMode==='merge'?'Merge':'Sign') + ' failed: ' + e.message);
   } finally {
     merging = false;
     updateUI();
