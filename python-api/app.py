@@ -252,6 +252,6 @@ def sign_pdf():
 # ===========================================================================
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PYTHON_API_PORT', 5001))
+    port = int(os.environ.get('PORT', os.environ.get('PYTHON_API_PORT', 5001)))
     print(f'Python API server running on port {port}')
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port, debug=False)

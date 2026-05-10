@@ -13,9 +13,12 @@ const dropzone = $('#dropzone'), fileInput = $('#fileInput'), fileList = $('#fil
 
 const DB_NAME = 'pdfMergerDB', DB_STORE = 'files', DB_VER = 1;
 
+// Helper to ensure URL starts with http
+const ensureHttp = url => (url && !url.startsWith('http')) ? 'https://' + url : url;
+
 // Get the API URL from Vite's env variables (fallback to localhost for development if undefined)
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const PYTHON_API_URL = import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:5001/api';
+const API_URL = ensureHttp(import.meta.env.VITE_API_URL) || 'http://localhost:5000/api';
+const PYTHON_API_URL = ensureHttp(import.meta.env.VITE_PYTHON_API_URL) || 'http://localhost:5001/api';
 
 // ===== State =====
 let currentMode = 'merge'; // 'merge' | 'sign'
