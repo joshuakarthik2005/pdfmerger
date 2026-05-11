@@ -450,6 +450,10 @@ actionBtn.addEventListener('click', async () => {
       endpoint = `${PYTHON_API_URL}/sign-pdf`;
     }
 
+    // DEBUGGING: Show the exact endpoint we are hitting
+    toast(`Attempting to contact: ${endpoint}`, 'warn');
+    console.log("Endpoint called:", endpoint);
+
     // Use XMLHttpRequest for upload progress tracking
     const xhr = new XMLHttpRequest();
     
