@@ -4,6 +4,13 @@ const $ = s => document.querySelector(s);
 const files = []; 
 let merging = false, mergedBlob = null, mergedBlobUrl = null;
 
+window.addEventListener('error', function(e) {
+  toast('Global Error: ' + e.message, 'error');
+});
+window.addEventListener('unhandledrejection', function(e) {
+  toast('Promise Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason), 'error');
+});
+
 const dropzone = $('#dropzone'), fileInput = $('#fileInput'), fileList = $('#fileList'),
       fileSection = $('#fileSection'), fileCount = $('#fileCount'), fileSummary = $('#fileSummary'),
       actionBtn = $('#actionBtn'), actionBtnText = $('#actionBtnText'), dlBtn = $('#dlBtn'),
