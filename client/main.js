@@ -301,29 +301,43 @@ let currentPreviewPage = 1;
 
 async function renderPdfPreview() {
   if (!pdfDoc) return;
-  const page = await pdfDoc.getPage(currentPreviewPage);
-  const viewport = page.getViewport({ scale: 1.0 });
-  const container = $('#pdfPreviewContainer');
-  const canvas = $('#pdfPreviewCanvas');
-  const ctx = canvas.getContext('2d');
-  
-  // MUST show before getting clientWidth, otherwise clientWidth is 0!
-  container.style.display = 'block';
-  $('#sigDraggable').style.display = 'block';
-  
-  const scale = container.clientWidth / viewport.width;
-  const scaledViewport = page.getViewport({ scale });
-  
-  canvas.width = scaledViewport.width;
-  canvas.height = scaledViewport.height;
-  
-  await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
-  
-  $('#pageCountDisplay').textContent = `(of ${pdfDoc.numPages})`;
-  $('#signPage').max = pdfDoc.numPages;
-  
-  updateSignaturePreview();
-  updateHiddenPositionFields();
+  try {
+    const page = await pdfDoc.getPage(currentPreviewPage);
+    const viewport = page.getViewport({ scale: 1.0 });
+    const container = $('#pdfPreviewContainer');
+    const canvas = $('#pdfPreviewCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    container.style.display = 'block';
+    container.style.minHeight = '300px'; // Foolproof min-height
+    $('#sigDraggable').style.display = 'block';
+    
+    // Give browser a tick to apply display: block layout
+    await new Promise(r => setTimeout(r, 50));
+    
+    let cw = container.clientWidth;
+    if (cw === 0) cw = container.parentElement.clientWidth || 300; // Fallback
+    
+    const scale = cw / viewport.width;
+    const scaledViewport = page.getViewport({ scale });
+    
+    canvas.width = scaledViewport.width;
+    canvas.height = scaledViewport.height;
+    
+    // Adjust container min-height to match canvas
+    container.style.minHeight = canvas.height + 'px';
+    
+    await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+    
+    $('#pageCountDisplay').textContent = `(of ${pdfDoc.numPages})`;
+    $('#signPage').max = pdfDoc.numPages;
+    
+    updateSignaturePreview();
+    updateHiddenPositionFields();
+  } catch(e) {
+    console.error("PDF Render Error", e);
+    toast("PDF Preview Error: " + e.message, "error");
+  }
 }
 
 $('#signPage').onchange = (e) => {
