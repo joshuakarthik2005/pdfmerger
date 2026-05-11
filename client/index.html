@@ -9,8 +9,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
 <div class="layout">
@@ -71,30 +69,25 @@
       <div id="sigImgInfo" style="display:none; margin-top: 5px; font-size: 0.8rem; color: var(--text3);"></div>
     </div>
 
-    </div>
-
-    <h3 style="font-size: 0.9rem; margin-top: 20px; margin-bottom: 10px;">Visual Positioning</h3>
-    <div style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 10px;">
+    <h3 style="font-size: 0.9rem; margin-top: 20px; margin-bottom: 10px;">Positioning</h3>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
       <div>
-        <label style="font-size: 0.75rem; color: var(--text2); display: flex; justify-content: space-between;">
-          <span>Page #</span>
-          <span id="pageCountDisplay"></span>
-        </label>
+        <label style="font-size: 0.75rem; color: var(--text2);">Page #</label>
         <input type="number" id="signPage" value="1" min="1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
       </div>
-      <div id="pdfPreviewContainer" style="position: relative; width: 100%; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: none; background: #fff; cursor: crosshair;">
-        <canvas id="pdfPreviewCanvas" style="width: 100%; display: block;"></canvas>
-        <div id="sigDraggable" style="position: absolute; border: 2px dashed #7c3aed; background-color: rgba(124, 58, 237, 0.15); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: move; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none;">
-          <div id="sigResizeHandle" style="position: absolute; bottom: -5px; right: -5px; width: 14px; height: 14px; background: #7c3aed; border-radius: 50%; cursor: se-resize;"></div>
-        </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">Width (%)</label>
+        <input type="number" id="signWidth" value="20" min="1" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+      </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">X Pos (%)</label>
+        <input type="number" id="signX" value="60" min="0" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
+      </div>
+      <div>
+        <label style="font-size: 0.75rem; color: var(--text2);">Y Pos (%)</label>
+        <input type="number" id="signY" value="85" min="0" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
       </div>
     </div>
-    
-    <!-- Hidden inputs to store exact coordinates to send to API -->
-    <input type="hidden" id="signWidth" value="20">
-    <input type="hidden" id="signX" value="60">
-    <input type="hidden" id="signY" value="85">
-
   </div>
 </div>
 </div>
