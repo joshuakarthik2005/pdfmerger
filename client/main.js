@@ -304,10 +304,10 @@ function setMode(m) {
     $('#mergeMode').style.display = 'none';
     $('#modeSub').textContent = 'Digitally sign a single PDF';
     // If a PDF is already loaded for signing, show the preview
-    if (pdfDoc) {
+    if (signPdfBlobUrl) {
       $('#viewerEmpty').style.display = 'none';
       $('#viewerDiv').style.display = 'none';
-      $('#pdfPreviewContainer').style.display = 'flex';
+      $('#pdfPreviewContainer').style.display = 'block';
     } else {
       $('#viewerEmpty').style.display = 'flex';
       $('#viewerDiv').style.display = 'none';
@@ -325,53 +325,37 @@ $('#signPdfDropzone').ondragover = e => { e.preventDefault(); e.dataTransfer.dro
 $('#signPdfDropzone').ondragleave = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); };
 $('#signPdfDropzone').ondrop = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleSignPdfDrop(e.dataTransfer.files[0]); };
 
-let pdfDoc = null;
-let currentPreviewPage = 1;
+let signPdfBlobUrl = null;
 
-async function renderPdfPreview() {
-  if (!pdfDoc) return;
-  try {
-    const page = await pdfDoc.getPage(currentPreviewPage);
-    const viewport = page.getViewport({ scale: 1.0 });
-    const container = $('#pdfPreviewContainer');
-    const canvas = $('#pdfPreviewCanvas');
-    const pCtx = canvas.getContext('2d');
-    
-    // Show the container via flex (CSS handles sizing)
-    container.style.display = 'flex';
-    $('#sigDraggable').style.display = 'block';
-    
-    // Give browser a frame to calculate layout
-    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    
-    let cw = container.clientWidth;
-    if (cw === 0) cw = container.parentElement.clientWidth || 600;
-    
-    const scale = cw / viewport.width;
-    const scaledViewport = page.getViewport({ scale });
-    
-    canvas.width = scaledViewport.width;
-    canvas.height = scaledViewport.height;
-    
-    await page.render({ canvasContext: pCtx, viewport: scaledViewport }).promise;
-    
-    $('#pageCountDisplay').textContent = `(of ${pdfDoc.numPages})`;
-    $('#signPage').max = pdfDoc.numPages;
-    
-    updateSignaturePreview();
-    updateHiddenPositionFields();
-  } catch(e) {
-    console.error('PDF Render Error', e);
-  }
+function showSignPreview(file) {
+  // Release previous blob URL
+  if (signPdfBlobUrl) URL.revokeObjectURL(signPdfBlobUrl);
+  signPdfBlobUrl = URL.createObjectURL(file);
+  
+  const embed = $('#pdfPreviewEmbed');
+  embed.data = signPdfBlobUrl;
+  
+  const container = $('#pdfPreviewContainer');
+  container.style.display = 'block';
+  
+  const dragBox = $('#sigDraggable');
+  dragBox.style.display = 'block';
+  dragBox.style.width = '30%';
+  dragBox.style.height = '8%';
+  dragBox.style.left = '35%';
+  dragBox.style.top = '75%';
+  
+  $('#viewerEmpty').style.display = 'none';
+  $('#viewerDiv').style.display = 'none';
+  
+  updateSignaturePreview();
+  updateHiddenPositionFields();
 }
 
 $('#signPage').onchange = (e) => {
   let val = parseInt(e.target.value);
   if (val < 1) val = 1;
-  if (pdfDoc && val > pdfDoc.numPages) val = pdfDoc.numPages;
   e.target.value = val;
-  currentPreviewPage = val;
-  renderPdfPreview();
 };
 
 function updateSignaturePreview() {
@@ -390,7 +374,7 @@ function updateSignaturePreview() {
 const dragBox = $('#sigDraggable');
 const previewContainer = $('#pdfPreviewContainer');
 let isDragging = false, isResizing = false;
-let startX, startY, startLeft, startTop, startWidth;
+let startX, startY, startLeft, startTop, startWidth, startHeight;
 
 dragBox.onmousedown = (e) => {
   if (e.target.id === 'sigResizeHandle') isResizing = true;
@@ -400,6 +384,7 @@ dragBox.onmousedown = (e) => {
   startLeft = dragBox.offsetLeft;
   startTop = dragBox.offsetTop;
   startWidth = dragBox.offsetWidth;
+  startHeight = dragBox.offsetHeight;
   e.preventDefault();
 };
 
@@ -417,7 +402,9 @@ window.addEventListener('mousemove', (e) => {
     dragBox.style.top = newTop + 'px';
   } else if (isResizing) {
     let newWidth = Math.max(20, Math.min(startWidth + dx, previewContainer.clientWidth - dragBox.offsetLeft));
+    let newHeight = Math.max(15, Math.min(startHeight + dy, previewContainer.clientHeight - dragBox.offsetTop));
     dragBox.style.width = newWidth + 'px';
+    dragBox.style.height = newHeight + 'px';
   }
   updateHiddenPositionFields();
 });
@@ -444,32 +431,16 @@ async function handleSignPdfDrop(file) {
   $('#signPdfInfo').style.display = 'block';
   $('#signPdfName').textContent = file.name + ' (' + fmtSize(file.size) + ')';
   
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    // Pass isEvalSupported: false to prevent the CSP 'eval' warning in DevTools
-    pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
-    currentPreviewPage = 1;
-    $('#signPage').value = 1;
-    // Set default initial position/size
-    dragBox.style.width = '30%';
-    dragBox.style.aspectRatio = '2/1';
-    dragBox.style.left = '35%';
-    dragBox.style.top = '75%';
-    
-    $('#viewerEmpty').style.display = 'none';
-    $('#viewerDiv').style.display = 'none';
-    $('#pdfPreviewContainer').style.display = 'flex';
-    
-    await renderPdfPreview();
-  } catch(e) {
-    console.error("PDF Preview Error", e);
-  }
+  showSignPreview(file);
   updateUI();
 }
 
 $('#clearSignPdfBtn').onclick = () => { 
-  signTargetPdf = null; pdfDoc = null; 
+  signTargetPdf = null;
+  if (signPdfBlobUrl) { URL.revokeObjectURL(signPdfBlobUrl); signPdfBlobUrl = null; }
   $('#pdfPreviewContainer').style.display = 'none';
+  $('#pdfPreviewEmbed').removeAttribute('data');
+  $('#sigDraggable').style.display = 'none';
   $('#viewerEmpty').style.display = 'flex';
   $('#viewerDiv').style.display = 'none';
   $('#signPdfDropzone').style.display = 'block'; 

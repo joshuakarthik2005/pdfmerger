@@ -9,8 +9,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/style.css">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
 </head>
 <body>
 <div class="layout">
@@ -107,13 +105,13 @@
   </div>
   
   <div id="pdfPreviewContainer">
-    <canvas id="pdfPreviewCanvas" style="width: 100%; display: block;"></canvas>
-    <div id="sigDraggable" style="position: absolute; border: 2px dashed #7c3aed; background-color: rgba(124, 58, 237, 0.15); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: move; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none;">
-      <div id="sigResizeHandle" style="position: absolute; bottom: -5px; right: -5px; width: 14px; height: 14px; background: #7c3aed; border-radius: 50%; cursor: se-resize;"></div>
+    <object id="pdfPreviewEmbed" type="application/pdf" style="width:100%;height:100%;border:none;"></object>
+    <div id="sigDraggable">
+      <div id="sigResizeHandle"></div>
     </div>
   </div>
 
-  <div id="viewerDiv" style="width: 100%; height: 100%;"></div>
+  <div id="viewerDiv"></div>
 </main>
 </div>
 <div class="toast-container" id="toastContainer"></div>
