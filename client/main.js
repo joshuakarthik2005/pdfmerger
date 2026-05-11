@@ -291,12 +291,28 @@ function setMode(m) {
     $('#mergeMode').style.display = 'block';
     $('#signMode').style.display = 'none';
     $('#modeSub').textContent = 'Merge PDFs via secure backend API';
+    // Reset viewer: hide sign preview, show empty placeholder
+    $('#pdfPreviewContainer').style.display = 'none';
+    if (!mergedBlobUrl) {
+      $('#viewerEmpty').style.display = 'flex';
+      $('#viewerDiv').style.display = 'none';
+    }
   } else {
     $('#modeSignBtn').classList.add('active');
     $('#modeMergeBtn').classList.remove('active');
     $('#signMode').style.display = 'block';
     $('#mergeMode').style.display = 'none';
     $('#modeSub').textContent = 'Digitally sign a single PDF';
+    // If a PDF is already loaded for signing, show the preview
+    if (pdfDoc) {
+      $('#viewerEmpty').style.display = 'none';
+      $('#viewerDiv').style.display = 'none';
+      $('#pdfPreviewContainer').style.display = 'flex';
+    } else {
+      $('#viewerEmpty').style.display = 'flex';
+      $('#viewerDiv').style.display = 'none';
+      $('#pdfPreviewContainer').style.display = 'none';
+    }
   }
   updateUI();
 }
@@ -319,19 +335,17 @@ async function renderPdfPreview() {
     const viewport = page.getViewport({ scale: 1.0 });
     const container = $('#pdfPreviewContainer');
     const canvas = $('#pdfPreviewCanvas');
-    const ctx = canvas.getContext('2d');
+    const pCtx = canvas.getContext('2d');
     
-    container.style.display = 'block';
-    container.style.visibility = 'visible';
-    container.style.opacity = '1';
-    container.style.minHeight = '300px'; // Foolproof min-height
+    // Show the container via flex (CSS handles sizing)
+    container.style.display = 'flex';
     $('#sigDraggable').style.display = 'block';
     
-    // Give browser a tick to apply display: block layout
-    await new Promise(r => setTimeout(r, 50));
+    // Give browser a frame to calculate layout
+    await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
     
     let cw = container.clientWidth;
-    if (cw === 0) cw = container.parentElement.clientWidth || 300; // Fallback
+    if (cw === 0) cw = container.parentElement.clientWidth || 600;
     
     const scale = cw / viewport.width;
     const scaledViewport = page.getViewport({ scale });
@@ -339,10 +353,7 @@ async function renderPdfPreview() {
     canvas.width = scaledViewport.width;
     canvas.height = scaledViewport.height;
     
-    // Adjust container min-height to match canvas
-    container.style.minHeight = canvas.height + 'px';
-    
-    await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+    await page.render({ canvasContext: pCtx, viewport: scaledViewport }).promise;
     
     $('#pageCountDisplay').textContent = `(of ${pdfDoc.numPages})`;
     $('#signPage').max = pdfDoc.numPages;
@@ -350,8 +361,7 @@ async function renderPdfPreview() {
     updateSignaturePreview();
     updateHiddenPositionFields();
   } catch(e) {
-    console.error("PDF Render Error", e);
-    toast("PDF Preview Error: " + e.message, "error");
+    console.error('PDF Render Error', e);
   }
 }
 
@@ -447,7 +457,8 @@ async function handleSignPdfDrop(file) {
     dragBox.style.top = '75%';
     
     $('#viewerEmpty').style.display = 'none';
-    $('#viewerDiv').style.display = 'none'; // Force hide the final viewer to fix flexbox layout
+    $('#viewerDiv').style.display = 'none';
+    $('#pdfPreviewContainer').style.display = 'flex';
     
     await renderPdfPreview();
   } catch(e) {
@@ -460,6 +471,7 @@ $('#clearSignPdfBtn').onclick = () => {
   signTargetPdf = null; pdfDoc = null; 
   $('#pdfPreviewContainer').style.display = 'none';
   $('#viewerEmpty').style.display = 'flex';
+  $('#viewerDiv').style.display = 'none';
   $('#signPdfDropzone').style.display = 'block'; 
   $('#signPdfInfo').style.display = 'none'; 
   $('#signPdfInput').value = ''; 
@@ -524,7 +536,6 @@ function handleSigImgDrop(file) {
   updateUI();
 }
 
-// ===== PDF Viewer (native browser) =====
 function showInViewer(blobUrl) {
   viewerDiv.innerHTML = '<object data="' + blobUrl + '" type="application/pdf"><iframe src="' + blobUrl + '"></iframe></object>';
   viewerDiv.style.display = 'block';
