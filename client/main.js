@@ -429,6 +429,9 @@ async function handleSignPdfDrop(file) {
     dragBox.style.aspectRatio = '2/1';
     dragBox.style.left = '35%';
     dragBox.style.top = '75%';
+    
+    $('#viewerEmpty').style.display = 'none';
+    
     await renderPdfPreview();
   } catch(e) {
     console.error("PDF Preview Error", e);
@@ -439,6 +442,7 @@ async function handleSignPdfDrop(file) {
 $('#clearSignPdfBtn').onclick = () => { 
   signTargetPdf = null; pdfDoc = null; 
   $('#pdfPreviewContainer').style.display = 'none';
+  $('#viewerEmpty').style.display = 'flex';
   $('#signPdfDropzone').style.display = 'block'; 
   $('#signPdfInfo').style.display = 'none'; 
   $('#signPdfInput').value = ''; 
@@ -508,6 +512,7 @@ function showInViewer(blobUrl) {
   viewerDiv.innerHTML = '<object data="' + blobUrl + '" type="application/pdf"><iframe src="' + blobUrl + '"></iframe></object>';
   viewerDiv.style.display = 'block';
   viewerEmpty.style.display = 'none';
+  $('#pdfPreviewContainer').style.display = 'none';
 }
 
 // ===== Download =====
