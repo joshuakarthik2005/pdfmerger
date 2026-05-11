@@ -4,11 +4,17 @@ const $ = s => document.querySelector(s);
 const files = []; 
 let merging = false, mergedBlob = null, mergedBlobUrl = null;
 
+// Deferred error handlers — toast() isn't defined yet at this point,
+// so we queue errors and flush them once the DOM is ready.
+const _earlyErrors = [];
 window.addEventListener('error', function(e) {
-  toast('Global Error: ' + e.message, 'error');
+  if (typeof toast === 'function') toast('Error: ' + e.message, 'error');
+  else _earlyErrors.push(e.message);
 });
 window.addEventListener('unhandledrejection', function(e) {
-  toast('Promise Error: ' + (e.reason && e.reason.message ? e.reason.message : e.reason), 'error');
+  const msg = e.reason && e.reason.message ? e.reason.message : String(e.reason);
+  if (typeof toast === 'function') toast('Error: ' + msg, 'error');
+  else _earlyErrors.push(msg);
 });
 
 const dropzone = $('#dropzone'), fileInput = $('#fileInput'), fileList = $('#fileList'),
