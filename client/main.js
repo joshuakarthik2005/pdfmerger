@@ -316,6 +316,8 @@ async function renderPdfPreview() {
     const ctx = canvas.getContext('2d');
     
     container.style.display = 'block';
+    container.style.visibility = 'visible';
+    container.style.opacity = '1';
     container.style.minHeight = '300px'; // Foolproof min-height
     $('#sigDraggable').style.display = 'block';
     
@@ -428,7 +430,8 @@ async function handleSignPdfDrop(file) {
   
   try {
     const arrayBuffer = await file.arrayBuffer();
-    pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    // Pass isEvalSupported: false to prevent the CSP 'eval' warning in DevTools
+    pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
     currentPreviewPage = 1;
     $('#signPage').value = 1;
     // Set default initial position/size
@@ -438,6 +441,7 @@ async function handleSignPdfDrop(file) {
     dragBox.style.top = '75%';
     
     $('#viewerEmpty').style.display = 'none';
+    $('#viewerDiv').style.display = 'none'; // Force hide the final viewer to fix flexbox layout
     
     await renderPdfPreview();
   } catch(e) {
