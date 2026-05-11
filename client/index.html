@@ -82,12 +82,6 @@
         </label>
         <input type="number" id="signPage" value="1" min="1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
       </div>
-      <div id="pdfPreviewContainer" style="position: relative; width: 100%; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; display: none; background: #fff; cursor: crosshair;">
-        <canvas id="pdfPreviewCanvas" style="width: 100%; display: block;"></canvas>
-        <div id="sigDraggable" style="position: absolute; border: 2px dashed #7c3aed; background-color: rgba(124, 58, 237, 0.15); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: move; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none;">
-          <div id="sigResizeHandle" style="position: absolute; bottom: -5px; right: -5px; width: 14px; height: 14px; background: #7c3aed; border-radius: 50%; cursor: se-resize;"></div>
-        </div>
-      </div>
     </div>
     
     <!-- Hidden inputs to store exact coordinates to send to API -->
@@ -105,13 +99,21 @@
 </div>
 </aside>
 <!-- RIGHT VIEWER -->
-<main class="viewer">
-<div class="viewer-empty" id="viewerEmpty">
-<svg class="viewer-empty-icon" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="25" y="10" width="70" height="90" rx="6" stroke-dasharray="4 3" style="animation:pulse 3s ease-in-out infinite"/><path d="M45 40h30M45 52h30M45 64h20" opacity=".4"/><circle cx="85" cy="85" r="20" fill="#7c3aed" opacity=".12"/><polyline points="78 85 85 92 95 78" stroke="#7c3aed" stroke-width="2.5"/></svg>
-<h3>Your merged PDF will appear here</h3>
-<p>Upload files on the left, then hit Merge to preview the result right here.</p>
-</div>
-<div id="viewerDiv"></div>
+<main class="viewer" style="display: flex; flex-direction: column; align-items: center; overflow-y: auto;">
+  <div class="viewer-empty" id="viewerEmpty">
+    <svg class="viewer-empty-icon" viewBox="0 0 120 120" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="25" y="10" width="70" height="90" rx="6" stroke-dasharray="4 3" style="animation:pulse 3s ease-in-out infinite"/><path d="M45 40h30M45 52h30M45 64h20" opacity=".4"/><circle cx="85" cy="85" r="20" fill="#7c3aed" opacity=".12"/><polyline points="78 85 85 92 95 78" stroke="#7c3aed" stroke-width="2.5"/></svg>
+    <h3>Your document will appear here</h3>
+    <p>Upload files on the left to preview the result right here.</p>
+  </div>
+  
+  <div id="pdfPreviewContainer" style="position: relative; width: 100%; max-width: 800px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); overflow: hidden; display: none; background: #fff; cursor: crosshair; margin: 20px auto;">
+    <canvas id="pdfPreviewCanvas" style="width: 100%; display: block;"></canvas>
+    <div id="sigDraggable" style="position: absolute; border: 2px dashed #7c3aed; background-color: rgba(124, 58, 237, 0.15); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: move; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none;">
+      <div id="sigResizeHandle" style="position: absolute; bottom: -5px; right: -5px; width: 14px; height: 14px; background: #7c3aed; border-radius: 50%; cursor: se-resize;"></div>
+    </div>
+  </div>
+
+  <div id="viewerDiv" style="width: 100%; height: 100%;"></div>
 </main>
 </div>
 <div class="toast-container" id="toastContainer"></div>
