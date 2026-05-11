@@ -296,16 +296,138 @@ $('#signPdfDropzone').ondragover = e => { e.preventDefault(); e.dataTransfer.dro
 $('#signPdfDropzone').ondragleave = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); };
 $('#signPdfDropzone').ondrop = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleSignPdfDrop(e.dataTransfer.files[0]); };
 
-function handleSignPdfDrop(file) {
+let pdfDoc = null;
+let currentPreviewPage = 1;
+
+async function renderPdfPreview() {
+  if (!pdfDoc) return;
+  const page = await pdfDoc.getPage(currentPreviewPage);
+  const viewport = page.getViewport({ scale: 1.0 });
+  const container = $('#pdfPreviewContainer');
+  const canvas = $('#pdfPreviewCanvas');
+  const ctx = canvas.getContext('2d');
+  
+  const scale = container.clientWidth / viewport.width;
+  const scaledViewport = page.getViewport({ scale });
+  
+  canvas.width = scaledViewport.width;
+  canvas.height = scaledViewport.height;
+  
+  await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+  
+  $('#pageCountDisplay').textContent = `(of ${pdfDoc.numPages})`;
+  $('#signPage').max = pdfDoc.numPages;
+  container.style.display = 'block';
+  $('#sigDraggable').style.display = 'block';
+  
+  updateSignaturePreview();
+  updateHiddenPositionFields();
+}
+
+$('#signPage').onchange = (e) => {
+  let val = parseInt(e.target.value);
+  if (val < 1) val = 1;
+  if (pdfDoc && val > pdfDoc.numPages) val = pdfDoc.numPages;
+  e.target.value = val;
+  currentPreviewPage = val;
+  renderPdfPreview();
+};
+
+function updateSignaturePreview() {
+  const dragBox = $('#sigDraggable');
+  if (sigMode === 'draw' && hasDrawn) {
+    dragBox.style.backgroundImage = `url(${sigCanvas.toDataURL('image/png')})`;
+  } else if (sigMode === 'upload' && sigImageFile) {
+    const url = URL.createObjectURL(sigImageFile);
+    dragBox.style.backgroundImage = `url(${url})`;
+  } else {
+    dragBox.style.backgroundImage = 'none';
+  }
+}
+
+// Draggable Logic
+const dragBox = $('#sigDraggable');
+const previewContainer = $('#pdfPreviewContainer');
+let isDragging = false, isResizing = false;
+let startX, startY, startLeft, startTop, startWidth;
+
+dragBox.onmousedown = (e) => {
+  if (e.target.id === 'sigResizeHandle') isResizing = true;
+  else isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  startLeft = dragBox.offsetLeft;
+  startTop = dragBox.offsetTop;
+  startWidth = dragBox.offsetWidth;
+  e.preventDefault();
+};
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging && !isResizing) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  
+  if (isDragging) {
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+    newLeft = Math.max(0, Math.min(newLeft, previewContainer.clientWidth - dragBox.offsetWidth));
+    newTop = Math.max(0, Math.min(newTop, previewContainer.clientHeight - dragBox.offsetHeight));
+    dragBox.style.left = newLeft + 'px';
+    dragBox.style.top = newTop + 'px';
+  } else if (isResizing) {
+    let newWidth = Math.max(20, Math.min(startWidth + dx, previewContainer.clientWidth - dragBox.offsetLeft));
+    dragBox.style.width = newWidth + 'px';
+  }
+  updateHiddenPositionFields();
+});
+
+window.addEventListener('mouseup', () => { isDragging = false; isResizing = false; });
+
+function updateHiddenPositionFields() {
+  const cWidth = previewContainer.clientWidth;
+  const cHeight = previewContainer.clientHeight;
+  const left = dragBox.offsetLeft;
+  const top = dragBox.offsetTop;
+  const width = dragBox.offsetWidth;
+  
+  $('#signX').value = ((left / cWidth) * 100).toFixed(2);
+  $('#signY').value = ((top / cHeight) * 100).toFixed(2);
+  $('#signWidth').value = ((width / cWidth) * 100).toFixed(2);
+}
+
+async function handleSignPdfDrop(file) {
   if (!file) return;
   if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) return toast('Target must be a PDF.');
   signTargetPdf = file;
   $('#signPdfDropzone').style.display = 'none';
   $('#signPdfInfo').style.display = 'block';
   $('#signPdfName').textContent = file.name + ' (' + fmtSize(file.size) + ')';
+  
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    currentPreviewPage = 1;
+    $('#signPage').value = 1;
+    // Set default initial position/size
+    dragBox.style.width = '30%';
+    dragBox.style.aspectRatio = '2/1';
+    dragBox.style.left = '35%';
+    dragBox.style.top = '75%';
+    await renderPdfPreview();
+  } catch(e) {
+    console.error("PDF Preview Error", e);
+  }
   updateUI();
 }
-$('#clearSignPdfBtn').onclick = () => { signTargetPdf = null; $('#signPdfDropzone').style.display = 'block'; $('#signPdfInfo').style.display = 'none'; $('#signPdfInput').value = ''; updateUI(); };
+
+$('#clearSignPdfBtn').onclick = () => { 
+  signTargetPdf = null; pdfDoc = null; 
+  $('#pdfPreviewContainer').style.display = 'none';
+  $('#signPdfDropzone').style.display = 'block'; 
+  $('#signPdfInfo').style.display = 'none'; 
+  $('#signPdfInput').value = ''; 
+  updateUI(); 
+};
 
 // Signature mode switcher
 $('#sigDrawBtn').onclick = () => setSigMode('draw');
@@ -319,6 +441,7 @@ function setSigMode(m) {
     $('#sigUploadBtn').classList.add('active'); $('#sigDrawBtn').classList.remove('active');
     $('#sigUploadArea').style.display = 'block'; $('#sigDrawArea').style.display = 'none';
   }
+  updateSignaturePreview();
   updateUI();
 }
 
@@ -341,10 +464,10 @@ function getPos(e) {
 }
 sigCanvas.onmousedown = sigCanvas.ontouchstart = e => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
 sigCanvas.onmousemove = sigCanvas.ontouchmove = e => { if (!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasDrawn = true; updateUI(); };
-window.addEventListener('mouseup', () => drawing = false);
-window.addEventListener('touchend', () => drawing = false);
+window.addEventListener('mouseup', () => { if(drawing){ drawing = false; updateSignaturePreview(); } });
+window.addEventListener('touchend', () => { if(drawing){ drawing = false; updateSignaturePreview(); } });
 
-$('#clearSigBtn').onclick = () => { ctx.clearRect(0,0,sigCanvas.width,sigCanvas.height); hasDrawn = false; updateUI(); };
+$('#clearSigBtn').onclick = () => { ctx.clearRect(0,0,sigCanvas.width,sigCanvas.height); hasDrawn = false; updateSignaturePreview(); updateUI(); };
 function isCanvasDrawn() { return hasDrawn; }
 
 // Signature Upload
@@ -360,6 +483,7 @@ function handleSigImgDrop(file) {
   sigImageFile = file;
   $('#sigImgInfo').style.display = 'block';
   $('#sigImgInfo').innerHTML = 'Selected: <strong>' + file.name + '</strong>';
+  updateSignaturePreview();
   updateUI();
 }
 
