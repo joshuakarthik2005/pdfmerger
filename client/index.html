@@ -70,25 +70,15 @@
     </div>
 
     <h3 style="font-size: 0.9rem; margin-top: 20px; margin-bottom: 10px;">Positioning</h3>
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-      <div>
-        <label style="font-size: 0.75rem; color: var(--text2);">Page #</label>
-        <input type="number" id="signPage" value="1" min="1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
-      </div>
-      <div>
-        <label style="font-size: 0.75rem; color: var(--text2);">Width (%)</label>
-        <input type="number" id="signWidth" value="20" min="1" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
-      </div>
-      <div>
-        <label style="font-size: 0.75rem; color: var(--text2);">X Pos (%)</label>
-        <input type="number" id="signX" value="60" min="0" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
-      </div>
-      <div>
-        <label style="font-size: 0.75rem; color: var(--text2);">Y Pos (%)</label>
-        <input type="number" id="signY" value="85" min="0" max="100" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
-      </div>
+    <div style="margin-bottom: 10px;">
+      <label style="font-size: 0.75rem; color: var(--text2);">Page #</label>
+      <input type="number" id="signPage" value="1" min="1" style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); color: var(--text);">
     </div>
-  </div>
+    <p style="font-size: 0.72rem; color: var(--text3); margin-bottom: 10px;">Upload a PDF to preview it on the right. Drag the purple box to position your signature.</p>
+    <input type="hidden" id="signWidth" value="20">
+    <input type="hidden" id="signX" value="60">
+    <input type="hidden" id="signY" value="85">
+    </div>
 </div>
 </div>
 <div class="sidebar-footer">
@@ -105,6 +95,9 @@
 <p>Upload files on the left, then hit Merge to preview the result right here.</p>
 </div>
 <div id="viewerDiv"></div>
+<div id="sigDraggable" style="display:none;">
+  <div id="sigResizeHandle"></div>
+</div>
 </main>
 </div>
 <div class="toast-container" id="toastContainer"></div>

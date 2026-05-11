@@ -278,12 +278,24 @@ function setMode(m) {
     $('#mergeMode').style.display = 'block';
     $('#signMode').style.display = 'none';
     $('#modeSub').textContent = 'Merge PDFs via secure backend API';
+    // Hide signature overlay when in merge mode
+    $('#sigDraggable').style.display = 'none';
+    // Restore viewer to empty state if no merge result
+    if (!mergedBlobUrl) {
+      viewerDiv.style.display = 'none';
+      viewerEmpty.style.display = 'flex';
+    }
   } else {
     $('#modeSignBtn').classList.add('active');
     $('#modeMergeBtn').classList.remove('active');
     $('#signMode').style.display = 'block';
     $('#mergeMode').style.display = 'none';
     $('#modeSub').textContent = 'Digitally sign a single PDF';
+    // If a PDF is loaded for signing, show its preview + overlay
+    if (signPdfBlobUrl) {
+      showInViewer(signPdfBlobUrl);
+      $('#sigDraggable').style.display = 'block';
+    }
   }
   updateUI();
 }
@@ -295,6 +307,7 @@ $('#signPdfInput').onchange = e => handleSignPdfDrop(e.target.files[0]);
 $('#signPdfDropzone').ondragover = e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; $('#signPdfDropzone').classList.add('drag-over'); };
 $('#signPdfDropzone').ondragleave = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); };
 $('#signPdfDropzone').ondrop = e => { e.preventDefault(); $('#signPdfDropzone').classList.remove('drag-over'); if (e.dataTransfer.files[0]) handleSignPdfDrop(e.dataTransfer.files[0]); };
+let signPdfBlobUrl = null;
 
 function handleSignPdfDrop(file) {
   if (!file) return;
@@ -303,9 +316,96 @@ function handleSignPdfDrop(file) {
   $('#signPdfDropzone').style.display = 'none';
   $('#signPdfInfo').style.display = 'block';
   $('#signPdfName').textContent = file.name + ' (' + fmtSize(file.size) + ')';
+  
+  // Show PDF in the right viewer using native browser rendering
+  if (signPdfBlobUrl) URL.revokeObjectURL(signPdfBlobUrl);
+  signPdfBlobUrl = URL.createObjectURL(file);
+  showInViewer(signPdfBlobUrl);
+  
+  // Show draggable signature overlay
+  const dragBox = $('#sigDraggable');
+  dragBox.style.display = 'block';
+  dragBox.style.width = '20%';
+  dragBox.style.height = '6%';
+  dragBox.style.left = '60%';
+  dragBox.style.top = '80%';
+  updateSignaturePreview();
+  updateHiddenPositionFields();
+  
   updateUI();
 }
-$('#clearSignPdfBtn').onclick = () => { signTargetPdf = null; $('#signPdfDropzone').style.display = 'block'; $('#signPdfInfo').style.display = 'none'; $('#signPdfInput').value = ''; updateUI(); };
+
+$('#clearSignPdfBtn').onclick = () => {
+  signTargetPdf = null;
+  if (signPdfBlobUrl) { URL.revokeObjectURL(signPdfBlobUrl); signPdfBlobUrl = null; }
+  $('#sigDraggable').style.display = 'none';
+  viewerDiv.style.display = 'none';
+  viewerEmpty.style.display = 'flex';
+  $('#signPdfDropzone').style.display = 'block';
+  $('#signPdfInfo').style.display = 'none';
+  $('#signPdfInput').value = '';
+  updateUI();
+};
+
+// ===== Draggable Signature Overlay =====
+const dragBox = $('#sigDraggable');
+const viewer = document.querySelector('.viewer');
+let isDragging = false, isResizing = false;
+let startX, startY, startLeft, startTop, startWidth, startHeight;
+
+dragBox.addEventListener('mousedown', (e) => {
+  if (e.target.id === 'sigResizeHandle') isResizing = true;
+  else isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  startLeft = dragBox.offsetLeft;
+  startTop = dragBox.offsetTop;
+  startWidth = dragBox.offsetWidth;
+  startHeight = dragBox.offsetHeight;
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging && !isResizing) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  
+  if (isDragging) {
+    let newLeft = startLeft + dx;
+    let newTop = startTop + dy;
+    newLeft = Math.max(0, Math.min(newLeft, viewer.clientWidth - dragBox.offsetWidth));
+    newTop = Math.max(0, Math.min(newTop, viewer.clientHeight - dragBox.offsetHeight));
+    dragBox.style.left = newLeft + 'px';
+    dragBox.style.top = newTop + 'px';
+  } else if (isResizing) {
+    let newWidth = Math.max(30, Math.min(startWidth + dx, viewer.clientWidth - dragBox.offsetLeft));
+    let newHeight = Math.max(20, Math.min(startHeight + dy, viewer.clientHeight - dragBox.offsetTop));
+    dragBox.style.width = newWidth + 'px';
+    dragBox.style.height = newHeight + 'px';
+  }
+  updateHiddenPositionFields();
+});
+
+window.addEventListener('mouseup', () => { isDragging = false; isResizing = false; });
+
+function updateHiddenPositionFields() {
+  const cWidth = viewer.clientWidth;
+  const cHeight = viewer.clientHeight;
+  if (!cWidth || !cHeight) return;
+  $('#signX').value = ((dragBox.offsetLeft / cWidth) * 100).toFixed(2);
+  $('#signY').value = ((dragBox.offsetTop / cHeight) * 100).toFixed(2);
+  $('#signWidth').value = ((dragBox.offsetWidth / cWidth) * 100).toFixed(2);
+}
+
+function updateSignaturePreview() {
+  if (sigMode === 'draw' && hasDrawn) {
+    dragBox.style.backgroundImage = 'url(' + sigCanvas.toDataURL('image/png') + ')';
+  } else if (sigMode === 'upload' && sigImageFile) {
+    dragBox.style.backgroundImage = 'url(' + URL.createObjectURL(sigImageFile) + ')';
+  } else {
+    dragBox.style.backgroundImage = 'none';
+  }
+}
 
 // Signature mode switcher
 $('#sigDrawBtn').onclick = () => setSigMode('draw');
