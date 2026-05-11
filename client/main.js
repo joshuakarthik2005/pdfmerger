@@ -307,6 +307,10 @@ async function renderPdfPreview() {
   const canvas = $('#pdfPreviewCanvas');
   const ctx = canvas.getContext('2d');
   
+  // MUST show before getting clientWidth, otherwise clientWidth is 0!
+  container.style.display = 'block';
+  $('#sigDraggable').style.display = 'block';
+  
   const scale = container.clientWidth / viewport.width;
   const scaledViewport = page.getViewport({ scale });
   
@@ -317,8 +321,6 @@ async function renderPdfPreview() {
   
   $('#pageCountDisplay').textContent = `(of ${pdfDoc.numPages})`;
   $('#signPage').max = pdfDoc.numPages;
-  container.style.display = 'block';
-  $('#sigDraggable').style.display = 'block';
   
   updateSignaturePreview();
   updateHiddenPositionFields();
